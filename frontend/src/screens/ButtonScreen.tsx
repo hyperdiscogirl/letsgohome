@@ -202,10 +202,10 @@ function Button() {
   }, []);
 
   return (
-    <div className="flex flex-col justify-center items-center h-screen gap-4">
-      <div className="text-2xl"> Let's {sessionData?.condition || ''}!</div>
+    <div className="flex flex-col justify-center items-center h-screen bg-[#fff9e6] gap-4">
+      <div className="text-5xl"> Let's {sessionData?.condition || ''}!</div>
       <button 
-        className={`${clicked ? 'bg-red-300' : 'bg-red-500'} border-outset border-red-500 text-white font-bold py-4 px-8 rounded-full text-xl shadow-lg transform transition duration-300 hover:scale-105 active:scale-95 border-2 hover:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-300 focus:ring-opacity-50 w-32 h-32 flex items-center justify-center`}
+        className={`${clicked ? 'bg-red-300' : 'bg-red-500'} border-outset border-red-500 text-white font-bold py-4 px-8 rounded-full text-xl shadow-lg transform transition duration-300 hover:scale-105 active:scale-95 border-2 hover:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-300 focus:ring-opacity-50 w-72 h-72 flex items-center justify-center`}
         onClick={handleClick} >
       </button>
       {clicked && (

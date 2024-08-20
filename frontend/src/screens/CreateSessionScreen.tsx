@@ -48,34 +48,48 @@ function CreateSession() {
     }
 
     return (
-        <div className="flex flex-col justify-center items-center">
-            <form className="flex flex-col gap-4 items-start" onSubmit={createSession}>
+        
+        <div className="flex flex-col justify-center items-center bg-[#fff9e6] h-screen">
+            <form className="flex flex-col gap-10 items-start" onSubmit={createSession}>
                 <div className="text-5xl text-green-700 flex self-center">Create a session</div>
 
-                <div className="text-3xl"> Condition </div>
-                <span > Let's <input 
-                                className="border-2 border-gray-300 rounded-lg p-2" 
-                                type="text" placeholder="go home!" 
-                                onChange={(e) => setCondition(e.target.value)} /> </span>
+                <div className="flex gap-10"> 
+                    <div className="text-3xl"> Condition </div>
+                    <span> Let's <input 
+                                    className="border-2 border-gray-300 rounded-lg p-2" 
+                                    type="text" placeholder="go home!" 
+                                    onChange={(e) => setCondition(e.target.value)} /> </span>
+                </div> 
 
-                <div className="text-3xl"> Threshold</div> 
-                <select 
-                    className="border-2 border-gray-300 rounded-lg p-2" 
-                    onChange={(e) => setThresholdType(e.target.value)} > 
-                    <option> Percentage</option>
-                    <option> N - x </option>
-                    <option> Total </option>            
-                </select>
-                <input 
-                    className="border-2 border-gray-300 rounded-lg p-2" 
-                    type="number" 
-                    placeholder="Enter number" 
-                    onChange={(e) => setThreshold(e.target.value)}/> 
-                <button type="submit" className="rounded-lg bg-green-600 text-4xl text-white px-4 py-2 self-center">  Create </button>
+                <div className="flex gap-10">
+                    <div className="text-3xl"> Threshold</div> 
+                    <div> 
+                        <select 
+                            className="border-2 border-gray-300 rounded-lg p-2" 
+                            onChange={(e) => setThresholdType(e.target.value)}
+                        > 
+                            <option>Percentage</option>
+                            <option>N - x</option>
+                            <option>Total</option>            
+                        </select>
+                        <input 
+                            className="border-2 border-gray-300 rounded-lg p-2" 
+                            type="number" 
+                            placeholder="Enter number" 
+                            onChange={(e) => setThreshold(e.target.value)}
+                        /> 
+                    </div>
+                </div>
+                <button 
+                    type="submit" 
+                    className="rounded-lg bg-green-600 text-4xl text-white px-4 py-2 self-center relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                >
+                    <span className="relative z-10">Create</span>
+                </button>
                 {error && <div className="text-red-700 text-xl">{error}</div>}
             </form>
         </div>
-    )
+    );
 }
 
 export default CreateSession

@@ -1,0 +1,30 @@
+{
+  "timestamp": "2024-08-20T23:28:34.970Z",
+  "before": {
+    "completed": true,
+    "condition": "go home",
+    "createdAt": 1724196378005,
+    "participants": {
+      "6c064597-df79-4463-b5c0-d96bb82c3985": {
+        "clicked": true,
+        "joinedAt": 1724196505546
+      }
+    },
+    "threshold": 2,
+    "thresholdType": "Percentage"
+  },
+  "after": {
+    "completed": true,
+    "condition": "go home",
+    "createdAt": 1724196378005,
+    "participants": {
+      "6c064597-df79-4463-b5c0-d96bb82c3985": {
+        "clicked": true,
+        "joinedAt": 1724196505546
+      }
+    },
+    "threshold": 2,
+    "thresholdType": "Percentage"
+  }
+}
+

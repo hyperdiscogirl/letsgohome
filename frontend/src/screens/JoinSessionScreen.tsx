@@ -53,7 +53,7 @@ function JoinSession() {
   };
 
   return (
-    <div className="flex flex-col justify-center items-center h-screen">
+    <div className="flex flex-col justify-center items-center bg-[#fff9e6] h-screen">
       <h1 className="text-3xl mb-6">Join a Session</h1>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 items-center">
         <input

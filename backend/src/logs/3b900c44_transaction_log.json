@@ -1,0 +1,152 @@
+{
+  "timestamp": "2024-08-20T21:14:15.440Z",
+  "before": {
+    "completed": false,
+    "condition": "test !",
+    "createdAt": 1724186820292,
+    "participants": {
+      "daac7644-01ea-4139-9583-5feccf3553ff": {
+        "clicked": true,
+        "joinedAt": 1724187216738
+      },
+      "e86c7d48-bd50-4016-be14-199e436c6be4": {
+        "clicked": true,
+        "joinedAt": 1724187216418
+      }
+    },
+    "threshold": 100,
+    "thresholdType": "Percentage"
+  },
+  "after": {
+    "completed": false,
+    "condition": "test !",
+    "createdAt": 1724186820292,
+    "participants": {
+      "daac7644-01ea-4139-9583-5feccf3553ff": {
+        "clicked": true,
+        "joinedAt": 1724187216738
+      },
+      "e86c7d48-bd50-4016-be14-199e436c6be4": {
+        "clicked": true,
+        "joinedAt": 1724187216418
+      }
+    },
+    "threshold": 100,
+    "thresholdType": "Percentage"
+  }
+}
+
+{
+  "timestamp": "2024-08-20T21:18:37.327Z",
+  "before": {
+    "completed": true,
+    "condition": "test !",
+    "createdAt": 1724186820292,
+    "participants": {
+      "daac7644-01ea-4139-9583-5feccf3553ff": {
+        "clicked": true,
+        "joinedAt": 1724187216738
+      },
+      "e86c7d48-bd50-4016-be14-199e436c6be4": {
+        "clicked": true,
+        "joinedAt": 1724187216418
+      }
+    },
+    "threshold": 100,
+    "thresholdType": "Percentage"
+  },
+  "after": {
+    "completed": true,
+    "condition": "test !",
+    "createdAt": 1724186820292,
+    "participants": {
+      "daac7644-01ea-4139-9583-5feccf3553ff": {
+        "clicked": true,
+        "joinedAt": 1724187216738
+      },
+      "e86c7d48-bd50-4016-be14-199e436c6be4": {
+        "clicked": true,
+        "joinedAt": 1724187216418
+      }
+    },
+    "threshold": 100,
+    "thresholdType": "Percentage"
+  }
+}
+
+{
+  "timestamp": "2024-08-20T21:19:20.891Z",
+  "before": {
+    "completed": true,
+    "condition": "test !",
+    "createdAt": 1724186820292,
+    "participants": {
+      "daac7644-01ea-4139-9583-5feccf3553ff": {
+        "clicked": false,
+        "joinedAt": 1724188752741
+      },
+      "e86c7d48-bd50-4016-be14-199e436c6be4": {
+        "clicked": true,
+        "joinedAt": 1724188756957
+      }
+    },
+    "threshold": 100,
+    "thresholdType": "Percentage"
+  },
+  "after": {
+    "completed": true,
+    "condition": "test !",
+    "createdAt": 1724186820292,
+    "participants": {
+      "daac7644-01ea-4139-9583-5feccf3553ff": {
+        "clicked": false,
+        "joinedAt": 1724188752741
+      },
+      "e86c7d48-bd50-4016-be14-199e436c6be4": {
+        "clicked": true,
+        "joinedAt": 1724188756957
+      }
+    },
+    "threshold": 100,
+    "thresholdType": "Percentage"
+  }
+}
+
+{
+  "timestamp": "2024-08-20T22:58:30.489Z",
+  "before": {
+    "completed": true,
+    "condition": "test !",
+    "createdAt": 1724186820292,
+    "participants": {
+      "daac7644-01ea-4139-9583-5feccf3553ff": {
+        "clicked": true,
+        "joinedAt": 1724194703838
+      },
+      "e86c7d48-bd50-4016-be14-199e436c6be4": {
+        "clicked": true,
+        "joinedAt": 1724188756957
+      }
+    },
+    "threshold": 100,
+    "thresholdType": "Percentage"
+  },
+  "after": {
+    "completed": true,
+    "condition": "test !",
+    "createdAt": 1724186820292,
+    "participants": {
+      "daac7644-01ea-4139-9583-5feccf3553ff": {
+        "clicked": true,
+        "joinedAt": 1724194703838
+      },
+      "e86c7d48-bd50-4016-be14-199e436c6be4": {
+        "clicked": true,
+        "joinedAt": 1724188756957
+      }
+    },
+    "threshold": 100,
+    "thresholdType": "Percentage"
+  }
+}
+
