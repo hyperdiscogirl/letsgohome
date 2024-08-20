@@ -1,7 +1,5 @@
 function EndScreen() {
-    return (
-        <div>LET'S GO HOME</div>
-    )
+    return <div>LET'S GO HOME</div>
 }
 
 export default EndScreen

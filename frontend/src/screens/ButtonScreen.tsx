@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { Copy, Link, X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Copy, Link, X, LucideUndo } from 'lucide-react';
 
 const API_BASE_URL = 'http://localhost:3000';
 
@@ -64,7 +64,6 @@ function ShareModal({ sessionId, onClose }: { sessionId: string; onClose: () => 
 
 function Button() {
   const { sessionId } = useParams();
-  const location = useLocation();
   const navigate = useNavigate();
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
   const [clicked, setClicked] = useState(() => {
@@ -138,7 +137,7 @@ function Button() {
 
       if (data.completed) {
         // Handle session completion (navigate to a results page)
-        navigate(`/results/${sessionId}`);
+        navigate(`/end/${sessionId}`);
       }
     } catch (err) {
       console.error('Error recording click:', err);
@@ -146,13 +145,45 @@ function Button() {
     }
   };
 
+  const handleUnclick = async () => {
+    try {
+      const guestId = localStorage.getItem('guestId');
+      const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}/unclick`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ guestId }),
+      }); 
+
+      if (!response.ok) {
+        console.error('Error recording unclick:', error)
+        throw new Error('Failed to record unclick')
+      }
+
+      setClicked(false);
+      localStorage.setItem(`clicked_${sessionId}`, 'false');
+
+
+    } catch (err) {
+      console.error('Error recording unclick:', err);
+      setError('Failed to record unclick. Please try again.');
+    }
+  };
 
 
   useEffect(() => {
-    joinSession();
-    // Set up polling or WebSocket connection here to get real-time updates
-    //probably i dont want to do it like this, but maye since it doens't need to be instant?? 
-    const intervalId = setInterval(fetchSessionData, 5000); // Poll every 5 seconds
+    const joinAndFetchData = async () => {
+      await joinSession();
+      await fetchSessionData();
+    };
+
+    joinAndFetchData();
+
+    const intervalId = setInterval(async () => {
+      console.log("Polling for session data...");
+      await fetchSessionData();
+    }, 5000); // Poll every 5 seconds
 
     return () => clearInterval(intervalId);
   }, [sessionId]);
@@ -172,15 +203,17 @@ function Button() {
 
   return (
     <div className="flex flex-col justify-center items-center h-screen gap-4">
-      <div className="text-2xl"> Let's {sessionData?.condition || 'go'}!</div>
+      <div className="text-2xl"> Let's {sessionData?.condition || ''}!</div>
       <button 
         className={`${clicked ? 'bg-red-300' : 'bg-red-500'} border-outset border-red-500 text-white font-bold py-4 px-8 rounded-full text-xl shadow-lg transform transition duration-300 hover:scale-105 active:scale-95 border-2 hover:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-300 focus:ring-opacity-50 w-32 h-32 flex items-center justify-center`}
         onClick={handleClick} >
       </button>
       {clicked && (
-        <>
-          You've clicked! <br /> Waiting on the rest of your group to be ready...
-        </>
+        <div className="flex flex-col gap-4 items-center">
+          <div> You've clicked! </div>
+          <div> Waiting on the rest of your group to be ready... </div>
+          <button onClick={handleUnclick}> <LucideUndo /> </button>
+        </div>
       )}
       <div className="relative">
         <button onClick={() => setShowModal(!showModal)} className="flex gap-2">
