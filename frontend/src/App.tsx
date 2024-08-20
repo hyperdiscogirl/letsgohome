@@ -1,33 +1,38 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import './index.css'
+import CreateSession from './components/CreateSession'  
+import JoinSession from './components/JoinSession'
+
+const API_BASE_URL = 'http://localhost:3000'; // Update this to your server's URL
+
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [createOrJoin, setCreateOrJoin] = useState<'create' | 'join' | null>(null)
 
   return (
     <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+      <div className="flex flex-col justify-center items-center text-2xl text-center w-full h-screen gap-4">
+        {createOrJoin === null && (
+        <>
+          <div className="text-3xl">Let's go home!</div>
+          <div className="flex flex-col justify-center items-center gap-4">
+              <button 
+                  className="bg-green-500 text-white p-2 rounded-lg w-48 shadow-lg backdrop-filter backdrop-blur-sm  border border-green-200 transition-all duration-300 hover:shadow-xl hover:scale-105" 
+                  onClick={() => setCreateOrJoin('create')}
+              >
+                  Create session
+              </button>
+              <button 
+                  className="bg-blue-500 text-white p-2 rounded-lg w-48 shadow-lg backdrop-filter backdrop-blur-sm  border border-blue-200 transition-all duration-300 hover:shadow-xl hover:scale-105" 
+                  onClick={() => setCreateOrJoin('join')}
+              >
+                  Join session
+              </button>
+          </div> 
+        </>)}
+        {createOrJoin === 'create' && <CreateSession />}
+        {createOrJoin === 'join' && <JoinSession />}
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
     </>
   )
 }
