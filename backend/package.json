@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node dist/src/server.js",
+    "build": "tsc",
+    "dev": "bun --watch src/server.ts"
   },
   "keywords": [],
   "author": "",
@@ -12,11 +14,14 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.19.2",
-    "firebase-admin": "^12.3.1"
+    "firebase-admin": "^12.3.1",
+    "uuid": "^10.0.0"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^22.4.1",
+    "@types/uuid": "^10.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4"
   }
