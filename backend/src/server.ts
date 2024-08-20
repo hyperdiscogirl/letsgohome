@@ -19,7 +19,7 @@ app.use(express.json());
 
 app.post('/sessions', async (req, res) => {
   const { guestId, condition, threshold, thresholdType } = req.body;
-  const sessionId = uuidv4();
+  const sessionId = uuidv4().substring(0, 8);
   const sessionRef = db.ref(`sessions/${sessionId}`);
 
   try {
@@ -44,6 +44,31 @@ app.post('/sessions', async (req, res) => {
   }
 });
 
+app.get('/sessions/:sessionId', async (req, res) => {
+  const { sessionId } = req.params;
+  const sessionRef = db.ref(`sessions/${sessionId}`);
+
+  try {
+    const snapshot = await sessionRef.once('value');
+    if (!snapshot.exists()) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    const sessionData = snapshot.val();
+
+    res.json({
+      sessionId: sessionId,
+      condition: sessionData.condition,
+      threshold: sessionData.threshold,
+      thresholdType: sessionData.thresholdType,
+      completed: sessionData.completed
+    });
+  } catch (error) {
+    console.error('Error getting session:', error);
+    res.status(500).json({ error: 'Failed to get session' });
+  }
+});     
+
 app.post('/sessions/:sessionId/join', async (req, res) => {
   const { sessionId } = req.params;
   const { guestId } = req.body;
@@ -55,12 +80,19 @@ app.post('/sessions/:sessionId/join', async (req, res) => {
       return res.status(404).json({ error: 'Session not found' });
     }
 
+    const sessionData = snapshot.val();
+
     await sessionRef.child('participants').child(guestId).set({
       clicked: false,
       joinedAt: admin.database.ServerValue.TIMESTAMP
     });
 
-    res.json({ success: true });
+    res.json({
+      success: true,
+      condition: sessionData.condition,
+      threshold: sessionData.threshold,
+      thresholdType: sessionData.thresholdType
+    });
   } catch (error) {
     console.error('Error joining session:', error);
     res.status(500).json({ error: 'Failed to join session' });

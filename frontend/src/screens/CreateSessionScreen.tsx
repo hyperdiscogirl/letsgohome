@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { MessageCircleQuestion } from "lucide-react"
+import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 
 function CreateSession() {
@@ -8,6 +9,7 @@ function CreateSession() {
     const [threshold, setThreshold] = useState('100')
     const [sessionId, setSessionId] = useState('')
     const [error, setError] = useState('')
+    const navigate = useNavigate();
 
     const createSession = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -37,6 +39,7 @@ function CreateSession() {
             setSessionId(data.sessionId);
 
             localStorage.setItem('guestId', guestId);
+            navigate(`/session/${data.sessionId}`);
     
         } catch (error) {
             console.error('Error creating session:', error);
