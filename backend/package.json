@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node dist/src/server.js",
+    "build": "tsc",
+    "dev": "bun --watch src/server.ts"
   },
   "keywords": [],
   "author": "",

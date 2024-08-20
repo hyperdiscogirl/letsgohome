@@ -5,7 +5,14 @@ import { v4 as uuidv4 } from 'uuid';
 
 const app = express();
 
-const serviceAccount = require("./../serviceAccountKey.json");
+
+let serviceAccount;
+if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+} else {
+  // Fallback for local development
+  serviceAccount = require('./../serviceAccountKey.json');
+}
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
