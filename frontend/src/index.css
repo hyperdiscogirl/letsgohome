@@ -1,3 +1,15 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@keyframes vibrate {
+  0% { transform: translate(0); }
+  25% { transform: translate(-2px, 2px); }
+  50% { transform: translate(2px, -2px); }
+  75% { transform: translate(-2px, -2px); }
+  100% { transform: translate(2px, 2px); }
+}
+
+.animate-vibrate {
+  animation: vibrate 0.2s linear infinite;
+}

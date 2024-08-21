@@ -45,10 +45,17 @@ function EndScreen() {
         return <div className="text-red-500">{error}</div>;
     }
 
+<<<<<<< Updated upstream
     return(
         <div className="flex flex-col justify-center items-center text-5xl h-screen  bg-[#fff9e6] gap-10">
             <div>TIME TO {sessionData?.condition || ''}</div>
             <div className="text-9xl">⏰</div>
+=======
+    return (
+        <div className="flex flex-col justify-center items-center text-4xl h-screen bg-[#fff9e6] gap-10">
+            {!loading && <div>TIME TO {sessionData?.condition || ''}!! </div>}
+            <div className="text-9xl animate-vibrate">⏰</div>
+>>>>>>> Stashed changes
             <button 
               onClick={() => navigate("/")} 
               className="text-3xl rounded-xl px-4 py-2 bg-green-500 text-white relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg"
