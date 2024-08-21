@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL;
+
+
 interface SessionData {
     condition?: string;
     thresholdType?: string;
@@ -19,7 +22,7 @@ function EndScreen() {
     useEffect(() => {
         const fetchSessionData = async () => {
             try {
-                const response = await fetch(`http://localhost:3000/sessions/${sessionId}`);
+                const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}`);
                 if (!response.ok) {
                     throw new Error('Failed to fetch session data');
                 }

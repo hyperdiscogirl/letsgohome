@@ -2,6 +2,8 @@ import { useState } from "react"
 import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL;
+
 function CreateSession() {
     const [condition, setCondition] = useState('')
     const [thresholdType, setThresholdType] = useState('Percentage')
@@ -17,7 +19,7 @@ function CreateSession() {
         const guestId = uuidv4();
 
         try {
-            const response = await fetch('http://localhost:3000/sessions', {
+            const response = await fetch(`${API_BASE_URL}/sessions`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
