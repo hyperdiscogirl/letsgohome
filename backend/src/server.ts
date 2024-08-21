@@ -6,6 +6,21 @@ import { v4 as uuidv4 } from 'uuid';
 const app = express();
 
 
+const allowedOrigins = ['http://localhost:5173', 'https://letsgohome-delta.vercel.app'];
+
+app.use(cors({
+  origin: function(origin, callback){
+    if(!origin) return callback(null, true);
+    if(allowedOrigins.indexOf(origin) === -1){
+      var msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true
+}));
+
+
 let serviceAccount;
 if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
   serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
@@ -21,7 +36,6 @@ admin.initializeApp({
 
 const db = admin.database();
 
-app.use(cors());
 app.use(express.json());
 
 app.post('/sessions', async (req, res) => {
@@ -248,6 +262,8 @@ app.post('/sessions/:sessionId/unclick', async (req, res) => {
   }
 });
 
-app.listen(3000, () => {
-  console.log('Server is running on port 3000');
+const port = process.env.PORT || 3000;
+
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });
