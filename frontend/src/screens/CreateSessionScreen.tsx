@@ -63,7 +63,7 @@ function CreateSession() {
                         <CircleHelp 
                             className="ml-2 cursor-help" 
                             data-tooltip-id="condition-tooltip" 
-                            data-tooltip-content="The condition is what we're agree to do when everyone clicks the button! E.g. 'go home', 'end this meeting', 'beat up Dave'"
+                            data-tooltip-content="The condition is what we're agreeing to do when everyone clicks the button! E.g. 'go home', 'end this meeting', 'beat up Dave'"
                         />
                     </div>
                     <div className="flex items-center">
@@ -83,7 +83,7 @@ function CreateSession() {
                         <CircleHelp 
                             className="ml-2 cursor-help" 
                             data-tooltip-id="threshold-tooltip" 
-                            data-tooltip-content="The threshold determines how many participants have to click before the session ends. It can be a percentage, N - x (number less than the total participants), or a total number needed. Default is 100%."
+                            data-tooltip-content="The threshold determines how many participants have to click before the session ends. It can be a percentage, N - x (where x is the number subtracted from the total participants), or a total number needed. Default is 100%."
                         />
                     </div>
                     <div className="flex gap-2">
