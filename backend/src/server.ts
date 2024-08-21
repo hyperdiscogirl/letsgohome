@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 const app = express();
 
 
-const allowedOrigins = ['http://localhost:5173', 'https://letsgohome-delta.vercel.app'];
+const allowedOrigins = ['http://localhost:5174', 'https://letsgohome-delta.vercel.app'];
 
 app.use(cors({
   origin: function(origin, callback){

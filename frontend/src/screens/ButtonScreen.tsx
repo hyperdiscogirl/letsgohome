@@ -107,6 +107,11 @@ function Button() {
       }
       const data = await response.json();
       setSessionData(data);
+      
+      // Check if the session is completed and navigate to the end screen
+      if (data.completed) {
+        navigate(`/end/${sessionId}`);
+      }
     } catch (err) {
       console.error('Error fetching session data:', err);
       setError('Failed to fetch session data. Please refresh the page.');
@@ -171,20 +176,16 @@ function Button() {
     }
   };
 
-
   useEffect(() => {
     const joinAndFetchData = async () => {
       await joinSession();
       await fetchSessionData();
     };
-
+  
     joinAndFetchData();
-
-    const intervalId = setInterval(async () => {
-      console.log("Polling for session data...");
-      await fetchSessionData();
-    }, 5000); // Poll every 5 seconds
-
+  
+    const intervalId = setInterval(fetchSessionData, 5000); // Poll every 5 seconds
+  
     return () => clearInterval(intervalId);
   }, [sessionId]);
 
