@@ -4,19 +4,18 @@ import { useNavigate } from 'react-router-dom';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
-
 interface SessionData {
     condition?: string;
     thresholdType?: string;
     threshold?: number;
     completed?: boolean;
-  }
-
+}
 
 function EndScreen() {
     const { sessionId } = useParams();
     const [sessionData, setSessionData] = useState<SessionData | null>(null);
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -35,6 +34,8 @@ function EndScreen() {
             } catch (err) {
                 console.error('Error fetching session data:', err);
                 setError('Failed to fetch session data. Please refresh the page.');
+            } finally {
+                setLoading(false);
             }
         };
 
@@ -45,17 +46,11 @@ function EndScreen() {
         return <div className="text-red-500">{error}</div>;
     }
 
-<<<<<<< Updated upstream
-    return(
-        <div className="flex flex-col justify-center items-center text-5xl h-screen  bg-[#fff9e6] gap-10">
-            <div>TIME TO {sessionData?.condition || ''}</div>
-            <div className="text-9xl">⏰</div>
-=======
+
     return (
         <div className="flex flex-col justify-center items-center text-4xl h-screen bg-[#fff9e6] gap-10">
             {!loading && <div>TIME TO {sessionData?.condition || ''}!! </div>}
             <div className="text-9xl animate-vibrate">⏰</div>
->>>>>>> Stashed changes
             <button 
               onClick={() => navigate("/")} 
               className="text-3xl rounded-xl px-4 py-2 bg-green-500 text-white relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg"
@@ -63,9 +58,9 @@ function EndScreen() {
               <span className="relative z-10">New session</span>
               <span className="absolute inset-0 bg-white opacity-20 transform rotate-12 translate-x-full transition-transform duration-300 ease-out group-hover:translate-x-0"></span>
             </button>
-              <p className="text-[20px]"> Made with ♥️ by <a href="https://hyperdiscogirl.netlify.app" target="_blank" rel="noopener noreferrer">Disco</a> </p>
+            <p className="text-[20px]"> Made with ♥️ by <a href="https://hyperdiscogirl.netlify.app" target="_blank" rel="noopener noreferrer">Disco</a> </p>
         </div>
-    )
+    );
 }
 
-export default EndScreen
+export default EndScreen;
