@@ -76,13 +76,15 @@ app.get('/sessions/:sessionId', async (req, res) => {
     }
 
     const sessionData = snapshot.val();
+    const participantCount = Object.keys(sessionData.participants).length;
 
     res.json({
       sessionId: sessionId,
       condition: sessionData.condition,
       threshold: sessionData.threshold,
       thresholdType: sessionData.thresholdType,
-      completed: sessionData.completed
+      completed: sessionData.completed,
+      participantCount: participantCount
     });
   } catch (error) {
     console.error('Error getting session:', error);
