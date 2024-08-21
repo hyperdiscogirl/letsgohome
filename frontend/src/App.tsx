@@ -13,7 +13,7 @@ function App() {
         <Route path="/create" element={<CreateSessionScreen />} />
         <Route path="/join" element={<JoinSessionScreen />} />
         <Route path="/join/:sessionId" element={<JoinSessionScreen />} />
-        <Route path="/session/:sessionId" element={<ButtonScreen />} />
+        <Route path="/sessions/:sessionId" element={<ButtonScreen />} />
         <Route path="/end/:sessionId" element={<EndScreen />} />
       </Routes>
     </Router>

@@ -40,7 +40,7 @@ function CreateSession() {
             setSessionId(data.sessionId);
 
             localStorage.setItem('guestId', guestId);
-            navigate(`/session/${data.sessionId}`);
+            navigate(`/sessions/${data.sessionId}`);
     
         } catch (error) {
             console.error('Error creating session:', error);
