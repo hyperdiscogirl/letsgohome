@@ -13,3 +13,7 @@
 .animate-vibrate {
   animation: vibrate 0.2s linear infinite;
 }
+
+.filter-red {
+  filter: saturate(60%); /* Adjust the value to get the desired color */
+}

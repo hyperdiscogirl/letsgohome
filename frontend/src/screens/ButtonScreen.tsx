@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Copy, Link, X, LucideUndo } from 'lucide-react';
+import ButtonRed  from '../../Button-Red.svg';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -237,10 +238,12 @@ function Button() {
   return (
     <div className="flex flex-col justify-center items-center h-screen bg-[#fff9e6] gap-4">
       <div className="text-5xl mb-10"> Let's {sessionData?.condition || ''}!</div>
-      <button 
-        className={`${clicked ? 'bg-red-700' : 'bg-red-500'} border-outset border-red-500 text-white font-bold py-4 px-8 rounded-full text-xl shadow-lg transform transition duration-300 hover:scale-105 active:scale-95 border-2  focus:outline-none focus:ring-2  w-72 h-72 flex items-center justify-center`}
-        onClick={handleClick} >
-      </button>
+      <img 
+        src={ButtonRed} 
+        alt="Button" 
+        className={`w-72 h-72 cursor-pointer transform transition duration-300 ${clicked ? "" : "hover:scale-105 active:scale-95"} ${clicked ? 'filter-red' : ''}`}
+        onClick={handleClick} 
+      />
       {clicked && (
         <div className="flex flex-col gap-4 items-center">
           <div> You've clicked! </div>
