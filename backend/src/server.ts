@@ -1,17 +1,25 @@
 import express from 'express';
-import cors from 'cors';
-import admin from 'firebase-admin';
+import { Server as SocketIOServer } from 'socket.io';
+import http from 'http';
+import admin, { database } from 'firebase-admin';
 import { v4 as uuidv4 } from 'uuid';
+import path from 'path';
+import cors from 'cors';
+import fs from 'fs';
+
+console.log('Starting server initialization...');
 
 const app = express();
+const server = http.createServer(app);
 
+console.log('Express app and HTTP server created');
 
-const allowedOrigins = ['http://localhost:5174', 'https://letsgohome-delta.vercel.app'];
-
+// CORS configuration
+const allowedOrigins = ['http://localhost:5173', 'https://letsgohome-delta.vercel.app'];
 app.use(cors({
-  origin: function(origin, callback){
-    if(!origin) return callback(null, true);
-    if(allowedOrigins.indexOf(origin) === -1){
+  origin: function(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
       var msg = 'The CORS policy for this site does not allow access from the specified Origin.';
       return callback(new Error(msg), false);
     }
@@ -20,264 +28,257 @@ app.use(cors({
   credentials: true
 }));
 
+console.log('CORS configuration applied');
 
-let serviceAccount;
+const io = new SocketIOServer(server, {
+    cors: {
+        origin: allowedOrigins,
+        methods: ["GET", "POST"],
+        credentials: true
+    }
+}); 
+
+console.log('Socket.IO server initialized');
+
+// Firebase setup
+let serviceAccount: admin.ServiceAccount;
+
+console.log('Current working directory:', process.cwd());
+
 if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+  console.log('Using Firebase service account from environment variable');
   serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
 } else {
-  // Fallback for local development
+  console.log('Attempting to load Firebase service account from file');
   serviceAccount = require('./../serviceAccountKey.json');
 }
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://letsgohome-e9509-default-rtdb.firebaseio.com"
-});
+try {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    databaseURL: "https://letsgohome-e9509-default-rtdb.firebaseio.com"
+  });
+  console.log('Firebase initialized successfully');
+} catch (error) {
+  console.error('Error initializing Firebase:', error);
+  process.exit(1);
+}
 
 const db = admin.database();
+console.log('Firebase database reference created');
 
-app.use(express.json());
+// Socket.IO event handlers
+io.on('connection', (socket) => {
+    console.log('New Socket.IO connection established');
+    let currentSessionId: string | null = null;
 
-app.post('/sessions', async (req, res) => {
-  const { guestId, condition, threshold, thresholdType } = req.body;
-  const sessionId = uuidv4().substring(0, 8);
-  const sessionRef = db.ref(`sessions/${sessionId}`);
+    socket.on('joinSession', async (data, callback) => {
+        console.log('Received joinSession event:', data);
+        const { sessionId, guestId } = data;
 
-  try {
-    await sessionRef.set({
-      createdAt: admin.database.ServerValue.TIMESTAMP,
-      participants: {
-        [guestId]: {
-          clicked: false,
-          joinedAt: admin.database.ServerValue.TIMESTAMP
+        if (currentSessionId === sessionId) {
+            console.log(`User ${guestId} already in session ${sessionId}`);
+            callback({
+                success: true,
+                message: 'Already joined this session'
+            });
+            return;
         }
-      },
-      condition: condition || "go home", // Default condition if not provided
-      thresholdType: thresholdType || "percentage", // Default threshold type if not provided
-      threshold: threshold || 2, // Default threshold if not provided
-      completed: false
+
+        const sessionRef = db.ref(`sessions/${sessionId}`);
+
+        try {
+            const snapshot = await sessionRef.once('value');
+            if (!snapshot.exists()) {
+                console.log(`Session not found: ${sessionId}`);
+                callback({ success: false, error: 'Session not found' });
+                return;
+            }
+
+            const sessionData = snapshot.val();
+
+            // Check if the user is already in the session
+            if (sessionData.participants && sessionData.participants[guestId]) {
+                console.log(`User ${guestId} rejoining session ${sessionId}`);
+            } else {
+                await sessionRef.child('participants').child(guestId).set({
+                    clicked: false,
+                    joinedAt: admin.database.ServerValue.TIMESTAMP
+                });
+            }
+
+            if (currentSessionId && currentSessionId !== sessionId) {
+                socket.leave(currentSessionId);
+            }
+            socket.join(sessionId);
+            currentSessionId = sessionId;
+
+            const participantCount = Object.keys(sessionData.participants || {}).length;
+
+            console.log(`User ${guestId} joined session ${sessionId}`);
+            callback({
+                success: true,
+                condition: sessionData.condition,
+                threshold: sessionData.threshold,
+                thresholdType: sessionData.thresholdType,
+                participantCount: participantCount
+            });
+
+            io.to(sessionId).emit('participantUpdate', { participantCount });
+        } catch (error) {
+            console.error('Error joining session:', error);
+            callback({ success: false, error: 'Failed to join session' });
+        }
     });
 
-    res.json({ sessionId });
-  } catch (error) {
-    console.error('Error creating session:', error);
-    res.status(500).json({ error: 'Failed to create session' });
-  }
+    socket.on('createSession', async (data, callback) => {
+        console.log('Received createSession event:', data);
+        const { guestId, condition, threshold, thresholdType } = data;
+        const sessionId = uuidv4().substring(0, 8);
+        const sessionRef = db.ref(`sessions/${sessionId}`);
+
+        try {
+          await sessionRef.set({
+            createdAt: admin.database.ServerValue.TIMESTAMP,
+            participants: {
+              [guestId]: {
+                clicked: false,
+                joinedAt: admin.database.ServerValue.TIMESTAMP
+              }
+            },
+            condition: condition || "go home",
+            thresholdType: thresholdType || "percentage",
+            threshold: threshold || 2,
+            completed: false
+          });
+
+          console.log(`Session created: ${sessionId}`);
+          callback({ success: true, sessionId });
+        } catch (error) {
+          console.error('Error creating session:', error);
+          callback({ success: false, error: 'Failed to create session' });
+        }
+    });   
+
+    socket.on('click', async (data, callback) => {
+        console.log('Received click event:', data);
+        const { sessionId, guestId } = data;
+        const sessionRef = db.ref(`sessions/${sessionId}`);
+
+        try {
+          const result = await sessionRef.transaction((session) => {
+            if (session === null) return null;
+
+            if (!session.participants[guestId]) {
+              session.participants[guestId] = { clicked: false, joinedAt: admin.database.ServerValue.TIMESTAMP };
+            }
+
+            session.participants[guestId].clicked = true;
+
+            const totalParticipants = Object.keys(session.participants).length;
+            const clickedCount = Object.values(session.participants as Record<string, { clicked: boolean }>).filter(p => p.clicked).length;
+
+            let thresholdReached = false;
+            switch (session.thresholdType.toLowerCase()) {
+              case 'percentage':
+                const clickedPercentage = (clickedCount / totalParticipants) * 100;
+                thresholdReached = clickedPercentage >= session.threshold;
+                break;
+              case 'n-x':
+                thresholdReached = clickedCount >= (totalParticipants - session.threshold);
+                break;
+              case 'total':
+                thresholdReached = clickedCount >= session.threshold;
+                break;
+            }
+
+            if (thresholdReached && !session.completed) {
+              session.completed = true;
+            }
+
+            return session;
+          });
+
+          if (result.committed) {
+            const updatedSession = result.snapshot.val();
+            console.log(`Click recorded for user ${guestId} in session ${sessionId}`);
+            callback({ success: true, completed: updatedSession.completed });
+
+            io.to(sessionId).emit('sessionUpdate', {
+              clickedCount: Object.values(updatedSession.participants as Record<string, { clicked: boolean }>).filter(p => p.clicked).length,
+              totalParticipants: Object.keys(updatedSession.participants).length,
+              completed: updatedSession.completed
+            });
+
+            if (updatedSession.completed) {
+              console.log(`Session ${sessionId} completed`);
+              io.to(sessionId).emit('sessionComplete');
+            }
+          } else {
+            console.log(`Failed to record click for user ${guestId} in session ${sessionId}`);
+            callback({ success: false, error: 'Failed to record click' });
+          }
+        } catch (error) {
+          console.error('Error recording click:', error);
+          callback({ success: false, error: 'Failed to record click' });
+        }
+    });
+
+    socket.on('unclick', async (data, callback) => {
+        console.log('Received unclick event:', data);
+        const { sessionId, guestId } = data;
+        const sessionRef = db.ref(`sessions/${sessionId}`);
+
+        try {
+          await sessionRef.child(`participants/${guestId}/clicked`).set(false);
+          console.log(`Unclick recorded for user ${guestId} in session ${sessionId}`);
+          callback({ success: true });
+
+          const snapshot = await sessionRef.once('value');
+          const sessionData = snapshot.val();
+
+          io.to(sessionId).emit('sessionUpdate', {
+            clickedCount: Object.values(sessionData.participants as Record<string, { clicked: boolean }>).filter(p => p.clicked).length,
+            totalParticipants: Object.keys(sessionData.participants).length,
+            completed: sessionData.completed
+          });
+        } catch (error) {
+          console.error('Error recording unclick:', error);
+          callback({ success: false, error: 'Failed to record unclick' });
+        }
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Socket.IO connection closed');
+    });
 });
 
-app.get('/sessions/:sessionId', async (req, res) => {
-  const { sessionId } = req.params;
-  const sessionRef = db.ref(`sessions/${sessionId}`);
+// Serve static files from the React app
+const staticPath = path.join(__dirname, 'client/build');
+console.log('Static file path:', staticPath);
+app.use(express.static(staticPath));
 
-  try {
-    const snapshot = await sessionRef.once('value');
-    if (!snapshot.exists()) {
-      return res.status(404).json({ error: 'Session not found' });
-    }
-
-    const sessionData = snapshot.val();
-    const participantCount = Object.keys(sessionData.participants).length;
-
-    res.json({
-      sessionId: sessionId,
-      condition: sessionData.condition,
-      threshold: sessionData.threshold,
-      thresholdType: sessionData.thresholdType,
-      completed: sessionData.completed,
-      participantCount: participantCount
-    });
-  } catch (error) {
-    console.error('Error getting session:', error);
-    res.status(500).json({ error: 'Failed to get session' });
-  }
-});     
-
-app.post('/sessions/:sessionId/join', async (req, res) => {
-  const { sessionId } = req.params;
-  const { guestId } = req.body;
-  const sessionRef = db.ref(`sessions/${sessionId}`);
-
-  try {
-    const snapshot = await sessionRef.once('value');
-    if (!snapshot.exists()) {
-      return res.status(404).json({ error: 'Session not found' });
-    }
-
-    const sessionData = snapshot.val();
-
-    await sessionRef.child('participants').child(guestId).set({
-      clicked: false,
-      joinedAt: admin.database.ServerValue.TIMESTAMP
-    });
-
-    res.json({
-      success: true,
-      condition: sessionData.condition,
-      threshold: sessionData.threshold,
-      thresholdType: sessionData.thresholdType
-    });
-  } catch (error) {
-    console.error('Error joining session:', error);
-    res.status(500).json({ error: 'Failed to join session' });
-  }
-});
-
-app.post('/sessions/:sessionId/click', async (req, res) => {
-    const { sessionId } = req.params;
-    const { guestId } = req.body;
-    const sessionRef = db.ref(`sessions/${sessionId}`);
-  
-    console.log(`Click request received for session ${sessionId}, guest ${guestId}`);
-  
-    try {
-      const result = await sessionRef.transaction((session) => {
-        console.log('Transaction started', { sessionId, guestId, currentSession: session });
-  
-        if (session === null) {
-          console.log('Session not found', { sessionId });
-          return null;
-        }
-  
-        if (!session.participants[guestId]) {
-          console.log('Adding new participant', { sessionId, guestId });
-          session.participants[guestId] = { clicked: false, joinedAt: admin.database.ServerValue.TIMESTAMP };
-        }
-  
-        session.participants[guestId].clicked = true;
-  
-        const totalParticipants = Object.keys(session.participants).length;
-        const clickedCount = Object.values(session.participants as Record<string, { clicked: boolean }>).filter(p => p.clicked).length;
-  
-        console.log('Calculated counts', { sessionId, totalParticipants, clickedCount });
-  
-        let thresholdReached = false;
-        switch (session.thresholdType.toLowerCase()) {
-          case 'percentage':
-            const clickedPercentage = (clickedCount / totalParticipants) * 100;
-            thresholdReached = clickedPercentage >= session.threshold;
-            console.log('Percentage threshold check', { 
-              sessionId, 
-              clickedPercentage, 
-              threshold: session.threshold, 
-              thresholdReached 
-            });
-            break;
-          case 'n-x':
-            // n-x: threshold is reached when clickedCount equals (totalParticipants - threshold)
-            thresholdReached = clickedCount >= (totalParticipants - session.threshold);
-            console.log('N-X threshold check', { 
-              sessionId, 
-              clickedCount, 
-              totalParticipants,
-              threshold: session.threshold, 
-              requiredClicks: totalParticipants - session.threshold,
-              thresholdReached 
-            });
-            break;
-          case 'total':
-            // total: threshold is reached when clickedCount equals or exceeds the threshold
-            thresholdReached = clickedCount >= session.threshold;
-            console.log('Total threshold check', { 
-              sessionId, 
-              clickedCount, 
-              threshold: session.threshold, 
-              thresholdReached 
-            });
-            break;
-          default:
-            console.log('Unknown threshold type', { sessionId, thresholdType: session.thresholdType });
-            break;
-        }
-  
-        if (thresholdReached && !session.completed) {
-          session.completed = true;
-          console.log(`Threshold reached! Condition: ${session.condition}`, { sessionId });
-        }
-  
-        return session;
-      });
-    
-      if (result.committed) {
-        const updatedSession = result.snapshot.val();
-        console.log('Transaction committed', { sessionId, updatedSession });
-        res.json({ 
-          success: true, 
-          completed: updatedSession.completed,
-          clickedCount: Object.values(updatedSession.participants as Record<string, { clicked: boolean }>).filter(p => p.clicked).length,
-          totalParticipants: Object.keys(updatedSession.participants).length,
-          thresholdReached: updatedSession.completed,
-          thresholdType: updatedSession.thresholdType,
-          threshold: updatedSession.threshold
-        });
-      } else {
-        console.log('Transaction not committed', { sessionId });
-        res.status(404).json({ error: 'Session not found or update failed' });
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        console.error('Error recording click:', error);
-        res.status(500).json({ error: 'Failed to record click', details: error.message });
-      } else {
-        console.error('Unknown error:', error);
-        res.status(500).json({ error: 'Failed to record click', details: 'Unknown error' });
-      }
-    }
-  });
-
-// Debug endpoint to fetch session state
-app.get('/debug/sessions/:sessionId', async (req, res) => {
-  const { sessionId } = req.params;
-  const sessionRef = db.ref(`sessions/${sessionId}`);
-
-  try {
-    const snapshot = await sessionRef.once('value');
-    if (snapshot.exists()) {
-      res.json(snapshot.val());
+// The "catchall" handler
+app.get('*', (req, res) => {
+    const indexPath = path.join(__dirname, 'client/build', 'index.html');
+    console.log('Serving index.html from:', indexPath);
+    if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
     } else {
-      res.status(404).json({ error: 'Session not found' });
+        console.error('index.html not found at:', indexPath);
+        res.status(404).send('Not found');
     }
-  } catch (error) {
-    console.error('Error fetching session for debug:', error);
-    res.status(500).json({ error: 'Failed to fetch session', details: error instanceof Error ? error.message : String(error) });
-  }
 });
-
-app.post('/sessions/:sessionId/unclick', async (req, res) => {
-  const { sessionId } = req.params;
-  const { guestId } = req.body;
-  const sessionRef = db.ref(`sessions/${sessionId}`);
-
-  try {
-    const snapshot = await sessionRef.once('value');
-    if (!snapshot.exists()) {
-      return res.status(404).json({ error: 'Session not found' });
-    }
-
-    const sessionData = snapshot.val();
-
-    await sessionRef.child(`participants/${guestId}/clicked`).set(false);
-
-    res.json({ success: true, sessionData });
-  } catch (error) {
-    console.error('Error recording unclick:', error);
-    res.status(500).json({ error: 'Failed to record unclick' });
-  }
-});
-
-const path = require('path');
-
-   // Serve static files from the React app
-   app.use(express.static(path.join(__dirname, 'client/build')));
-
-   // The "catchall" handler: for any request that doesn't
-   // match one above, send back React's index.html file.
-   app.get('*', (req, res) => {
-     res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
-   });
-   
 
 const port = process.env.PORT || 3000;
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+server.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+    console.log('Server initialization complete');
+});
+
+// Global error handler
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+    process.exit(1);
 });

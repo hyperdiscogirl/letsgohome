@@ -1,55 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams} from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL;
-
+import { useSocketManager } from '../useSocketService';
 
 function JoinSession() {
   const [sessionId, setSessionId] = useState('');
-  const [error, setError] = useState('');
-  const navigate = useNavigate();
-  const params = useParams();
+  const { error, joinSession } = useSocketManager(sessionId);
+  const params = useParams<{ sessionId?: string }>();
 
   useEffect(() => {
-    // Check if a session ID was provided in the URL
     if (params.sessionId) {
       setSessionId(params.sessionId);
-      joinSession(params.sessionId);
+      handleJoin(params.sessionId);
     }
   }, [params.sessionId]);
 
-  const joinSession = async (sessionId: string) => {
-    setError('');
+  const handleJoin = (sessionIdToJoin: string) => {
     const guestId = localStorage.getItem('guestId') || uuidv4();
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}/join`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ guestId }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to join session');
-      }
-
-      localStorage.setItem('guestId', guestId);
-      navigate(`/sessions/${sessionId}`);
-    } catch (err) {
-      console.error('Error joining session:', err);
-      setError('Failed to join session. Please check the session ID and try again.');
-    }
+    localStorage.setItem('guestId', guestId);
+    joinSession(sessionIdToJoin, guestId);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (sessionId) {
-      joinSession(sessionId);
-    } else {
-      setError('Please enter a session ID');
+      handleJoin(sessionId);
     }
   };
 
