@@ -1,60 +1,30 @@
-import { useState } from "react"
-import { useNavigate } from 'react-router-dom';
-import { v4 as uuidv4 } from 'uuid';
+import React, { useState } from "react";
+import { useSocketManager } from '../useSocketService';
 import { CircleHelp } from "lucide-react";
 import { Tooltip } from 'react-tooltip';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+import { v4 as uuidv4 } from 'uuid';
 
 function CreateSession() {
     const [condition, setCondition] = useState('')
     const [thresholdType, setThresholdType] = useState('Percentage')
     const [threshold, setThreshold] = useState('100')
-    const [_, setSessionId] = useState('')
-    const [error, setError] = useState('')
-    const navigate = useNavigate();
+    const { error, createSession } = useSocketManager(null);
 
-    const createSession = async (e: React.FormEvent<HTMLFormElement>) => {
+    const handleCreateSession = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        console.log({ condition, thresholdType, threshold });
-
         const guestId = uuidv4();
-
-        try {
-            const response = await fetch(`${API_BASE_URL}/sessions`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    guestId,
-                    condition,
-                    thresholdType,
-                    threshold: parseInt(threshold),
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to create session');
-            }
-
-            const data = await response.json();
-            setSessionId(data.sessionId);
-
-            localStorage.setItem('guestId', guestId);
-            navigate(`/sessions/${data.sessionId}`);
-    
-        } catch (error) {
-            console.error('Error creating session:', error);
-            setError('Oops! There was an issue creating this session. Please try again.');
-            
-        }
+        localStorage.setItem('guestId', guestId);
+        createSession({
+            guestId,
+            condition,
+            thresholdType,
+            threshold: parseInt(threshold),
+        });
     }
 
     return (
-        
         <div className="flex flex-col justify-center items-center bg-[#fff9e6] h-screen p-10">
-            <form className="flex flex-col gap-10 items-center" onSubmit={createSession}>
+            <form className="flex flex-col gap-10 items-center" onSubmit={handleCreateSession}>
                 <div className="text-4xl text-green-700 text-center">Create Session</div>
 
                 <div className="flex flex-col items-center gap-4">
@@ -83,7 +53,7 @@ function CreateSession() {
                         <CircleHelp 
                             className="ml-2 cursor-help" 
                             data-tooltip-id="threshold-tooltip" 
-                            data-tooltip-content="The threshold determines how many participants have to click before the session ends. It can be a percentage, N - x (where x is the number subtracted from the total participants), or a total number needed. Default is 100%."
+                            data-tooltip-content="The threshold determines how many participants have to click before the session ends. It can be a percentage, N - x (where x is the number you enter, subtracted from the total participants), or a total number needed. Default is 100%."
                         />
                     </div>
                     <div className="flex gap-2">
