@@ -1,7 +1,7 @@
 import express from 'express';
 import { Server as SocketIOServer } from 'socket.io';
 import http from 'http';
-import admin, { database } from 'firebase-admin';
+import admin from 'firebase-admin';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import cors from 'cors';
@@ -161,67 +161,74 @@ io.on('connection', (socket) => {
     });   
 
     socket.on('click', async (data, callback) => {
-        console.log('Received click event:', data);
-        const { sessionId, guestId } = data;
-        const sessionRef = db.ref(`sessions/${sessionId}`);
-
-        try {
-          const result = await sessionRef.transaction((session) => {
-            if (session === null) return null;
-
-            if (!session.participants[guestId]) {
-              session.participants[guestId] = { clicked: false, joinedAt: admin.database.ServerValue.TIMESTAMP };
-            }
-
-            session.participants[guestId].clicked = true;
-
-            const totalParticipants = Object.keys(session.participants).length;
-            const clickedCount = Object.values(session.participants as Record<string, { clicked: boolean }>).filter(p => p.clicked).length;
-
-            let thresholdReached = false;
-            switch (session.thresholdType.toLowerCase()) {
-              case 'percentage':
-                const clickedPercentage = (clickedCount / totalParticipants) * 100;
-                thresholdReached = clickedPercentage >= session.threshold;
-                break;
-              case 'n-x':
-                thresholdReached = clickedCount >= (totalParticipants - session.threshold);
-                break;
-              case 'total':
-                thresholdReached = clickedCount >= session.threshold;
-                break;
-            }
-
-            if (thresholdReached && !session.completed) {
-              session.completed = true;
-            }
-
-            return session;
-          });
-
-          if (result.committed) {
-            const updatedSession = result.snapshot.val();
-            console.log(`Click recorded for user ${guestId} in session ${sessionId}`);
-            callback({ success: true, completed: updatedSession.completed });
-
-            io.to(sessionId).emit('sessionUpdate', {
-              clickedCount: Object.values(updatedSession.participants as Record<string, { clicked: boolean }>).filter(p => p.clicked).length,
-              totalParticipants: Object.keys(updatedSession.participants).length,
-              completed: updatedSession.completed
-            });
-
-            if (updatedSession.completed) {
-              console.log(`Session ${sessionId} completed`);
-              io.to(sessionId).emit('sessionComplete');
-            }
-          } else {
-            console.log(`Failed to record click for user ${guestId} in session ${sessionId}`);
-            callback({ success: false, error: 'Failed to record click' });
+      console.log('Received click event:', data);
+      const { sessionId, guestId } = data;
+      const sessionRef = db.ref(`sessions/${sessionId}`);
+  
+      try {
+        const result = await sessionRef.transaction((session) => {
+          if (session === null) return null;
+  
+          if (!session.participants[guestId]) {
+            session.participants[guestId] = { clicked: false, joinedAt: admin.database.ServerValue.TIMESTAMP };
           }
-        } catch (error) {
-          console.error('Error recording click:', error);
+  
+          session.participants[guestId].clicked = true;
+  
+          const totalParticipants = Object.keys(session.participants).length;
+          const clickedCount = Object.values(session.participants as Record<string, { clicked: boolean }>).filter(p => p.clicked).length;
+  
+          let thresholdReached = false;
+          switch (session.thresholdType.toLowerCase()) {
+            case 'percentage':
+              const clickedPercentage = (clickedCount / totalParticipants) * 100;
+              thresholdReached = clickedPercentage >= session.threshold;
+              break;
+            case 'n-x':
+              thresholdReached = clickedCount >= (totalParticipants - session.threshold);
+              break;
+            case 'total':
+              thresholdReached = clickedCount >= session.threshold;
+              break;
+          }
+  
+          if (thresholdReached && !session.completed) {
+            session.completed = true;
+          }
+  
+          return session;
+        });
+  
+        if (result.committed) {
+          const updatedSession = result.snapshot.val();
+          console.log(`Click recorded for user ${guestId} in session ${sessionId}`);
+          
+          const updateData = {
+            success: true, 
+            completed: updatedSession.completed,
+            clickedCount: Object.values(updatedSession.participants as Record<string, { clicked: boolean }>).filter(p => p.clicked).length,
+            totalParticipants: Object.keys(updatedSession.participants).length
+          };
+
+          // Emit sessionUpdate to all clients in the room
+          io.to(sessionId).emit('sessionUpdate', updateData);
+
+          if (updatedSession.completed) {
+            console.log(`Session ${sessionId} completed`);
+            // Emit sessionComplete to all clients in the room
+            io.to(sessionId).emit('sessionComplete');
+          }
+
+          // Send the response back to the client who clicked
+          callback(updateData);
+        } else {
+          console.log(`Failed to record click for user ${guestId} in session ${sessionId}`);
           callback({ success: false, error: 'Failed to record click' });
         }
+      } catch (error) {
+        console.error('Error recording click:', error);
+        callback({ success: false, error: 'Failed to record click' });
+      }
     });
 
     socket.on('unclick', async (data, callback) => {
@@ -268,6 +275,32 @@ app.get('*', (req, res) => {
         console.error('index.html not found at:', indexPath);
         res.status(404).send('Not found');
     }
+});
+
+// route to handle session data requests that dont need a socket connection
+app.get('/sessions/:sessionId', async (req, res) => {
+  const { sessionId } = req.params;
+  const sessionRef = db.ref(`sessions/${sessionId}`);
+
+  try {
+    const snapshot = await sessionRef.once('value');
+    if (snapshot.exists()) {
+      const sessionData = snapshot.val();
+      res.json({
+        condition: sessionData.condition,
+        thresholdType: sessionData.thresholdType,
+        threshold: sessionData.threshold,
+        completed: sessionData.completed,
+        participantCount: Object.keys(sessionData.participants).length,
+        clickedCount: Object.values(sessionData.participants as Record<string, { clicked: boolean }>).filter(p => p.clicked).length
+      });
+    } else {
+      res.status(404).json({ error: 'Session not found' });
+    }
+  } catch (error) {
+    console.error('Error fetching session data:', error);
+    res.status(500).json({ error: 'Failed to fetch session data' });
+  }
 });
 
 const port = process.env.PORT || 3000;

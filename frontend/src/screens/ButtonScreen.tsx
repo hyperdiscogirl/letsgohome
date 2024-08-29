@@ -68,12 +68,18 @@ function LoadingDots() {
 function Button() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
-  const { sessionData, error, loading, joinSession, emitAction } = useSocketManager(sessionId || null);
+  const { 
+    sessionData, 
+    error, 
+    loading, 
+    joinSession, 
+    emitAction 
+  } = useSocketManager(sessionId || null);
+
   const [clicked, setClicked] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const modalRef = useRef(null);
-
 
   useEffect(() => {
     const guestId = localStorage.getItem('guestId');
@@ -82,6 +88,14 @@ function Button() {
       joinSession(sessionId, guestId);
     }
   }, [sessionId, sessionData, joinSession]);
+
+  useEffect(() => {
+    console.log('sessionData changed:', sessionData);
+    if (sessionData?.completed) {
+      console.log('Session completed, navigating to end screen');
+      navigate(`/end/${sessionId}`);
+    }
+  }, [sessionData, navigate, sessionId]);
 
   useEffect(() => {
     const storedClickState = localStorage.getItem(`clicked_${sessionId}`);
@@ -98,7 +112,6 @@ function Button() {
 
     recordClick();
   };
-
 
   const recordClick = async () => {
     const guestId = localStorage.getItem('guestId');
