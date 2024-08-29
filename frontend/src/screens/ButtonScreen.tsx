@@ -1,17 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Copy, Link, X, LucideUndo } from 'lucide-react';
+import { useSocketManager } from '../useSocketService';
 import ButtonRed  from '../../Button-Red.svg';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL;
-
-interface SessionData {
-  condition?: string;
-  thresholdType?: string;
-  threshold?: number;
-  completed?: boolean;
-  participantCount?: number;
-}
 
 function ShareModal({ sessionId, onClose }: { sessionId: string; onClose: () => void }) {
   const [copiedMessage, setCopiedMessage] = useState('');
@@ -75,66 +66,43 @@ function LoadingDots() {
 }
 
 function Button() {
-  const { sessionId } = useParams();
+  const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
-  const [sessionData, setSessionData] = useState<SessionData | null>(null);
-  const [clicked, setClicked] = useState(() => {
-    // Initialize clicked state from local storage
-    const storedClickState = localStorage.getItem(`clicked_${sessionId}`);
-    return storedClickState === 'true';
-  });
+  const { 
+    sessionData, 
+    error, 
+    loading, 
+    joinSession, 
+    emitAction 
+  } = useSocketManager(sessionId || null);
+
+  const [clicked, setClicked] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const modalRef = useRef(null);
 
-  const joinSession = async () => {
-    try {
-      const guestId = localStorage.getItem('guestId');
-      const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}/join`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ guestId }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to join session');
-      }
-
-      const data = await response.json();
-      setSessionData(data);
-      console.log('Joined session:', data);
-    } catch (err) {
-      console.error('Error joining session:', err);
-      setError('Failed to join session. Please try again.');
+  useEffect(() => {
+    const guestId = localStorage.getItem('guestId');
+    if (guestId && sessionId && !sessionData) {
+      console.log(`Initiating join for session ${sessionId}`);
+      joinSession(sessionId, guestId);
     }
-  };
+  }, [sessionId, sessionData, joinSession]);
 
-  const fetchSessionData = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch session data');
-      }
-      const data = await response.json();
-      setSessionData(data);
-      setLoading(false);
-      
-      // Check if the session is completed and navigate to the end screen
-      if (data.completed) {
-        navigate(`/end/${sessionId}`);
-      }
-    } catch (err) {
-      console.error('Error fetching session data:', err);
-      setError('Failed to fetch session data. Please refresh the page.');
-      setLoading(false);
+  useEffect(() => {
+    console.log('sessionData changed:', sessionData);
+    if (sessionData?.completed) {
+      console.log('Session completed, navigating to end screen');
+      navigate(`/end/${sessionId}`);
     }
-  };
+  }, [sessionData, navigate, sessionId]);
 
-  const handleClick = async () => {
+  useEffect(() => {
+    const storedClickState = localStorage.getItem(`clicked_${sessionId}`);
+    setClicked(storedClickState === 'true');
+  }, [sessionId]);
+
+  const handleClick = () => {
     if (clicked) return;
 
     if (sessionData?.participantCount === 1) {
@@ -142,77 +110,33 @@ function Button() {
       return;
     }
 
-    await recordClick();
+    recordClick();
   };
 
   const recordClick = async () => {
+    const guestId = localStorage.getItem('guestId');
     try {
-      const guestId = localStorage.getItem('guestId');
-      const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}/click`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ guestId }),
-      });
-
-      if (!response.ok) {
-        console.error('Error recording click:', error)
-        throw new Error('Failed to record click')
-      }
-
+      await emitAction('click', { sessionId, guestId });
       setClicked(true);
-      const data = await response.json();
       localStorage.setItem(`clicked_${sessionId}`, 'true');
-
-      if (data.completed) {
-        // Handle session completion (navigate to a results page)
-        navigate(`/end/${sessionId}`);
-      }
     } catch (err) {
-      console.error('Error recording click:', err);
-      setError('Failed to record click. Please try again.');
+      console.error('Failed to record click:', err);
+      // Error is already set in the useSocketManager hook
     }
   };
 
   const handleUnclick = async () => {
+    if (!clicked) return;
+    const guestId = localStorage.getItem('guestId');
     try {
-      const guestId = localStorage.getItem('guestId');
-      const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}/unclick`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ guestId }),
-      }); 
-
-      if (!response.ok) {
-        console.error('Error recording unclick:', error)
-        throw new Error('Failed to record unclick')
-      }
-
+      await emitAction('unclick', { sessionId, guestId });
       setClicked(false);
       localStorage.setItem(`clicked_${sessionId}`, 'false');
-
-
     } catch (err) {
-      console.error('Error recording unclick:', err);
-      setError('Failed to record unclick. Please try again.');
+      console.error('Failed to record unclick:', err);
+      // Error is already set in the useSocketManager hook
     }
   };
-
-  useEffect(() => {
-    const joinAndFetchData = async () => {
-      await joinSession();
-      await fetchSessionData();
-    };
-  
-    joinAndFetchData();
-  
-    const intervalId = setInterval(fetchSessionData, 2500); // Poll every 2.5 seconds
-  
-    return () => clearInterval(intervalId);
-  }, [sessionId]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -286,6 +210,7 @@ function Button() {
           </div>
         )}
       </div>
+      {error && <div className="text-red-600 mt-4">{error}</div>}
     </div>
   );
 }
