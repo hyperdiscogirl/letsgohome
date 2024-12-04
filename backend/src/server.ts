@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 const app = express();
 
 
-const allowedOrigins = ['http://localhost:5173', 'https://letsgohome-delta.vercel.app'];
+const allowedOrigins = ['http://localhost:5174', 'https://letsgohome-delta.vercel.app'];
 
 app.use(cors({
   origin: function(origin, callback){
@@ -76,13 +76,15 @@ app.get('/sessions/:sessionId', async (req, res) => {
     }
 
     const sessionData = snapshot.val();
+    const participantCount = Object.keys(sessionData.participants).length;
 
     res.json({
       sessionId: sessionId,
       condition: sessionData.condition,
       threshold: sessionData.threshold,
       thresholdType: sessionData.thresholdType,
-      completed: sessionData.completed
+      completed: sessionData.completed,
+      participantCount: participantCount
     });
   } catch (error) {
     console.error('Error getting session:', error);
@@ -261,6 +263,18 @@ app.post('/sessions/:sessionId/unclick', async (req, res) => {
     res.status(500).json({ error: 'Failed to record unclick' });
   }
 });
+
+const path = require('path');
+
+   // Serve static files from the React app
+   app.use(express.static(path.join(__dirname, 'client/build')));
+
+   // The "catchall" handler: for any request that doesn't
+   // match one above, send back React's index.html file.
+   app.get('*', (req, res) => {
+     res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
+   });
+   
 
 const port = process.env.PORT || 3000;
 

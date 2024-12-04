@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Copy, Link, X, LucideUndo } from 'lucide-react';
+import ButtonRed  from '../../Button-Red.svg';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -9,6 +10,7 @@ interface SessionData {
   thresholdType?: string;
   threshold?: number;
   completed?: boolean;
+  participantCount?: number;
 }
 
 function ShareModal({ sessionId, onClose }: { sessionId: string; onClose: () => void }) {
@@ -62,6 +64,16 @@ function ShareModal({ sessionId, onClose }: { sessionId: string; onClose: () => 
   );
 }
 
+function LoadingDots() {
+  return (
+    <div className="flex space-x-2">
+      <div className="w-3 h-3 bg-gray-500 rounded-full animate-bounce"></div>
+      <div className="w-3 h-3 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+      <div className="w-3 h-3 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+    </div>
+  );
+}
+
 function Button() {
   const { sessionId } = useParams();
   const navigate = useNavigate();
@@ -73,6 +85,8 @@ function Button() {
   });
   const [showModal, setShowModal] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const modalRef = useRef(null);
 
   const joinSession = async () => {
@@ -107,15 +121,31 @@ function Button() {
       }
       const data = await response.json();
       setSessionData(data);
+      setLoading(false);
+      
+      // Check if the session is completed and navigate to the end screen
+      if (data.completed) {
+        navigate(`/end/${sessionId}`);
+      }
     } catch (err) {
       console.error('Error fetching session data:', err);
       setError('Failed to fetch session data. Please refresh the page.');
+      setLoading(false);
     }
   };
 
   const handleClick = async () => {
     if (clicked) return;
 
+    if (sessionData?.participantCount === 1) {
+      setShowConfirmation(true);
+      return;
+    }
+
+    await recordClick();
+  };
+
+  const recordClick = async () => {
     try {
       const guestId = localStorage.getItem('guestId');
       const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}/click`, {
@@ -171,20 +201,16 @@ function Button() {
     }
   };
 
-
   useEffect(() => {
     const joinAndFetchData = async () => {
       await joinSession();
       await fetchSessionData();
     };
-
+  
     joinAndFetchData();
-
-    const intervalId = setInterval(async () => {
-      console.log("Polling for session data...");
-      await fetchSessionData();
-    }, 5000); // Poll every 5 seconds
-
+  
+    const intervalId = setInterval(fetchSessionData, 2500); // Poll every 2.5 seconds
+  
     return () => clearInterval(intervalId);
   }, [sessionId]);
 
@@ -201,13 +227,23 @@ function Button() {
     };
   }, []);
 
+  if (loading) {
+    return (
+      <div className="flex flex-col justify-center items-center h-screen bg-[#fff9e6]">
+        <LoadingDots />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col justify-center items-center h-screen bg-[#fff9e6] gap-4">
-      <div className="text-5xl"> Let's {sessionData?.condition || ''}!</div>
-      <button 
-        className={`${clicked ? 'bg-red-300' : 'bg-red-500'} border-outset border-red-500 text-white font-bold py-4 px-8 rounded-full text-xl shadow-lg transform transition duration-300 hover:scale-105 active:scale-95 border-2 hover:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-300 focus:ring-opacity-50 w-72 h-72 flex items-center justify-center`}
-        onClick={handleClick} >
-      </button>
+      <div className="text-5xl mb-10"> Let's {sessionData?.condition || ''}!</div>
+      <img 
+        src={ButtonRed} 
+        alt="Button" 
+        className={`w-72 h-72 cursor-pointer transform transition duration-300 ${clicked ? "" : "hover:scale-105 active:scale-95"} ${clicked ? 'filter-red' : ''}`}
+        onClick={handleClick} 
+      />
       {clicked && (
         <div className="flex flex-col gap-4 items-center">
           <div> You've clicked! </div>
@@ -215,7 +251,32 @@ function Button() {
           <button onClick={handleUnclick}> <LucideUndo /> </button>
         </div>
       )}
-      <div className="relative">
+      {showConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-10">
+          <div className="bg-white p-6 rounded-lg">
+            <p>You're the only one here, so clicking will end the session! Proceed?</p>
+            <div className="flex justify-end mt-4">
+              <button 
+                className="mr-2 px-4 py-2 bg-gray-200 rounded"
+                onClick={() => setShowConfirmation(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                className="px-4 py-2 bg-red-500 text-white rounded hover:animate-pulse"
+                onClick={() => {
+                  setShowConfirmation(false);
+                  recordClick();
+                }}
+              >
+                Proceed
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      <div className="relative flex flex-col gap-4 mt-10">
+        <div className="flex self-center"> {sessionData?.participantCount} {sessionData?.participantCount === 1 ? 'person' : 'people'} {sessionData?.participantCount === 1 ? 'is' : 'are'} here! </div>
         <button onClick={() => setShowModal(!showModal)} className="flex gap-2">
           Share session <Link />
         </button>

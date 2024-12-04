@@ -19,12 +19,12 @@ function JoinSession() {
     }
   }, [params.sessionId]);
 
-  const joinSession = async (id: string) => {
+  const joinSession = async (sessionId: string) => {
     setError('');
     const guestId = localStorage.getItem('guestId') || uuidv4();
 
     try {
-      const response = await fetch(`${API_BASE_URL}/sessions/${id}/join`, {
+      const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}/join`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -37,7 +37,7 @@ function JoinSession() {
       }
 
       localStorage.setItem('guestId', guestId);
-      navigate(`/session/${id}`);
+      navigate(`/sessions/${sessionId}`);
     } catch (err) {
       console.error('Error joining session:', err);
       setError('Failed to join session. Please check the session ID and try again.');
