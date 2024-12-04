@@ -1,46 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL;
-
-interface SessionData {
-    condition?: string;
-    thresholdType?: string;
-    threshold?: number;
-    completed?: boolean;
-}
+import { useSocketManager } from '../useSocketService';
 
 function EndScreen() {
     const { sessionId } = useParams();
-    const [sessionData, setSessionData] = useState<SessionData | null>(null);
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(true);
+    const { sessionData, loading, error } = useSocketManager(sessionId || null);
     const navigate = useNavigate();
-
-    useEffect(() => {
-        const fetchSessionData = async () => {
-            try {
-                const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}`);
-                if (!response.ok) {
-                    throw new Error('Failed to fetch session data');
-                }
-                const data = await response.json();
-                // Convert condition to uppercase if it exists
-                if (data.condition) {
-                    data.condition = data.condition.toUpperCase();
-                }
-                setSessionData(data);
-            } catch (err) {
-                console.error('Error fetching session data:', err);
-                setError('Failed to fetch session data. Please refresh the page.');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchSessionData();
-    }, [sessionId]);
 
     if (error) {
         return <div className="text-red-500">{error}</div>;

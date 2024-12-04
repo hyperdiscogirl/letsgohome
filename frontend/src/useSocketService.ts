@@ -1,0 +1,155 @@
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { io, Socket } from 'socket.io-client';
+
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+
+interface SessionData {
+  condition?: string;
+  thresholdType?: string;
+  threshold?: number;
+  completed?: boolean;
+  participantCount?: number;
+  clickedCount?: number;
+}
+
+export function useSocketManager(initialSessionId: string | null) {
+  const [sessionData, setSessionData] = useState<SessionData | null>(null);
+  const [error, setError] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(true);
+  const socketRef = useRef<Socket | null>(null);
+  const navigate = useNavigate();
+
+  const updateSessionData = useCallback((newData: Partial<SessionData>) => {
+    setSessionData(prevData => {
+      const updatedData = {...prevData, ...newData};
+      console.log('Updating sessionData:', updatedData);
+      if (initialSessionId) {
+        localStorage.setItem(`sessionData_${initialSessionId}`, JSON.stringify(updatedData));
+      }
+      return updatedData;
+    });
+  }, [initialSessionId]);
+
+  const connectSocket = useCallback((sessionId: string) => {
+    if (socketRef.current) {
+      console.log('Socket already exists, disconnecting...');
+      socketRef.current.disconnect();
+    }
+
+    console.log(`Connecting to socket with sessionId: ${sessionId}`);
+    socketRef.current = io(SOCKET_URL, {
+      query: { sessionId },
+      transports: ['websocket'],
+      reconnectionAttempts: 3,
+      reconnectionDelay: 1000,
+      timeout: 10000
+    });
+
+    socketRef.current.on('connect', () => {
+      console.log(`Connected to session: ${sessionId}`);
+      setLoading(false);
+    });
+
+    socketRef.current.on('connect_error', (error) => {
+      console.error('Connection error:', error);
+      setError('Failed to connect to the server. Please try again.');
+      setLoading(false);
+    });
+
+    socketRef.current.on('sessionUpdate', (updatedData: Partial<SessionData>) => {
+      console.log('Received sessionUpdate:', updatedData);
+      updateSessionData(updatedData);
+    });
+
+    socketRef.current.on('participantUpdate', (updatedData: { participantCount: number }) => {
+      console.log('Received participantUpdate:', updatedData);
+      updateSessionData({ participantCount: updatedData.participantCount });
+    });
+
+    socketRef.current.on('sessionComplete', () => {
+      console.log('Received sessionComplete event');
+      updateSessionData({ completed: true });
+      navigate(`/end/${sessionId}`);
+    });
+  }, [navigate, updateSessionData]);
+
+  useEffect(() => {
+    if (initialSessionId) {
+      const storedData = localStorage.getItem(`sessionData_${initialSessionId}`);
+      if (storedData) {
+        setSessionData(JSON.parse(storedData));
+      }
+      connectSocket(initialSessionId);
+    } else {
+      setLoading(false);
+    }
+
+    return () => {
+      if (socketRef.current) {
+        console.log('Cleaning up socket connection');
+        socketRef.current.disconnect();
+      }
+    };
+  }, [initialSessionId, connectSocket]);
+
+  const createSession = (sessionDetails: any) => {
+    setLoading(true);
+    setError('');
+    
+    if (!socketRef.current) {
+      connectSocket('create'); // Use a placeholder sessionId for creation
+    }
+
+    socketRef.current!.emit('createSession', sessionDetails, (response: any) => {
+      if (response.success) {
+        navigate(`/sessions/${response.sessionId}`);
+      } else {
+        setError('Failed to create session. Please try again.');
+      }
+      setLoading(false);
+    });
+  };
+
+  const joinSession = useCallback((sessionId: string, guestId: string) => {
+    if (!socketRef.current || !socketRef.current.connected) {
+      console.log('Socket not connected, reconnecting...');
+      connectSocket(sessionId);
+    }
+
+    socketRef.current!.emit('joinSession', { sessionId, guestId }, (response: any) => {
+      if (response.success) {
+        console.log('Join session successful:', response);
+        updateSessionData(response);
+        navigate(`/sessions/${sessionId}`);
+      } else {
+        console.error('Failed to join session:', response.error);
+        setError('Failed to join session. Please try again.');
+      }
+      setLoading(false);
+    });
+  }, [connectSocket, updateSessionData]);
+
+  const emitAction = async (action: string, data: any): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      if (socketRef.current) {
+        socketRef.current.emit(action, data, (response: any) => {
+          console.log(`Received response for ${action}:`, response);
+          if (response.success) {
+            updateSessionData(response);
+            resolve();
+          } else {
+            setError(response.error || 'An error occurred');
+            reject(new Error(response.error || 'An error occurred'));
+          }
+        });
+      } else {
+        const errorMsg = 'Not connected to a session.';
+        setError(errorMsg);
+        reject(new Error(errorMsg));
+      }
+    });
+  };
+
+  return { sessionData, setSessionData, error, loading, createSession, joinSession, emitAction };
+}
